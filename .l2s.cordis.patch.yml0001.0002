@@ -1,0 +1,4 @@
+# dsh-toolcall-id bundle patch: host-only stream wrapper, no client code.
+- insert:
+    - id: dsh-toolcall-id
+      name: dsh-toolcall-id

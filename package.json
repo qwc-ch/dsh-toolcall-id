@@ -1,0 +1,22 @@
+{
+	"name": "dsh-toolcall-id",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Rewrite per-step duplicate tool call ids (e.g. read:0 from openai-completions providers) into session-unique ids, fixing dsh web 'received more than one start Match' history-replay failures.",
+	"type": "module",
+	"main": "./index.js",
+	"exports": {
+		".": "./index.js",
+		"./package.json": "./package.json"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/qwc-ch/dsh-toolcall-id.git"
+	},
+	"dsh": {
+		"bundle": {
+			"patch": "./cordis.patch.yml"
+		}
+	}
+}
