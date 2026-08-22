@@ -1,6 +1,6 @@
 {
 	"name": "dsh-toolcall-id",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"private": true,
 	"description": "Rewrite per-step duplicate tool call ids (e.g. read:0 from openai-completions providers) into session-unique ids, fixing dsh web 'received more than one start Match' history-replay failures.",
 	"type": "module",

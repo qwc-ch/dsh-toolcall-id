@@ -20,7 +20,10 @@ const name = "dsh-toolcall-id";
 
 /**
  * Per-session state: ids already consumed by earlier requests.
- * @typedef {{used: Set<string>, counter: number}} SessionState
+ * `seeded` marks that persisted history (turns from before a dsh restart)
+ * has been folded in — without it a resumed session re-issues suffixes that
+ * collide with ids already written to the durable log.
+ * @typedef {{used: Set<string>, counter: number, seeded: boolean}} SessionState
  */
 
 /** @type {Map<string, SessionState>} */
@@ -39,7 +42,9 @@ function resolveId(state, streamMap, id) {
 	if (cached !== undefined) return cached;
 	let canonical = id;
 	if (id === "" || state.used.has(id)) {
-		canonical = `${id || "call"}~${++state.counter}`;
+		do {
+			canonical = `${id || "call"}~${++state.counter}`;
+		} while (state.used.has(canonical));
 	}
 	state.used.add(canonical);
 	streamMap.set(id, canonical);
@@ -82,6 +87,39 @@ async function* wrapStream(state, inner) {
 }
 
 /**
+ * Fold already-persisted tool-call ids of this session into `used`.
+ * Without this, resuming a session after a dsh restart would regenerate the
+ * same "~n" suffixes that earlier turns already wrote to the durable log,
+ * re-breaking history replay. Done once per session, lazily; never throws.
+ * @param {object} ctx - cordis ctx (needs the sessions service via inject)
+ * @param {string} sessionId
+ * @param {SessionState} state
+ */
+function seedFromHistory(ctx, sessionId, state) {
+	if (state.seeded) return;
+	state.seeded = true;
+	try {
+		const session = ctx.sessions?.get?.(sessionId);
+		if (!session) return;
+		for (const event of session.events ?? []) {
+			if (event.type === "tool/call" && typeof event.data?.callId === "string") {
+				state.used.add(event.data.callId);
+			} else if (event.type === "assistant/message") {
+				for (const block of event.data?.message?.content ?? []) {
+					if (block?.type === "tool-call" && typeof block.id === "string") {
+						state.used.add(block.id);
+					}
+				}
+			}
+		}
+		// Never regenerate a suffix that history might already own.
+		state.counter = state.used.size;
+	} catch {
+		// seeding is best-effort; in-memory dedupe still applies
+	}
+}
+
+/**
  * Cordis plugin entry: join every model request's stream.
  * @param {object} ctx
  */
@@ -90,11 +128,15 @@ function apply(ctx) {
 		const key = typeof options?.sessionId === "string" ? options.sessionId : "default";
 		let state = sessions.get(key);
 		if (state === undefined) {
-			state = { used: new Set(), counter: 0 };
+			state = { used: new Set(), counter: 0, seeded: false };
 			sessions.set(key, state);
 		}
+		seedFromHistory(ctx, key, state);
 		return wrapStream(state, next());
 	}, { global: true });
 }
 
-export { apply, name };
+/** sessions service supplies the durable event log for history seeding. */
+const inject = ["sessions"];
+
+export { apply, inject, name };

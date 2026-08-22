@@ -65,6 +65,7 @@ dsh plugin --profile web uninstall dsh-toolcall-id
 
 * **旧会话**的存档里已经写入了重复的 id，插件只能防止以后新会话出错。要恢复旧会话，需要手动编辑对应的 `*.jsonl.zstd` 文件把重复 id 改写后重新压缩（不在本插件范围内）。
 * 改写后的 id 仍然会随同在后续的模型请求中发送给提供商，OpenAI‑compatible 接口对 id 的格式没有限制，安全可靠。
+* **重启兼容（v0.2.0）**：插件会在首次见到某个会话时，从该会话已持久化的事件日志里恢复已用过的 id（`tool/call` 和 assistant 消息里的 tool-call 块）。这样重启 dsh 后继续旧会话，新生成的后缀不会和已落盘的 id 撞车。
 * 如果上游在未来的 dsh 版本中把 `toolDefinition` 的 `match` 改为带 `turn/step`，记得把插件删掉，行为是等价的。
 
 ## 许可证
