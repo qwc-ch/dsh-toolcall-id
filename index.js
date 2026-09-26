@@ -101,7 +101,7 @@ function seedFromHistory(ctx, sessionId, state) {
 	try {
 		const session = ctx.sessions?.get?.(sessionId);
 		if (!session) return;
-		for (const event of session.events ?? []) {
+		for (const event of session.snapshotEvents?.() ?? session.events ?? []) {
 			if (event.type === "tool/call" && typeof event.data?.callId === "string") {
 				state.used.add(event.data.callId);
 			} else if (event.type === "assistant/message") {
